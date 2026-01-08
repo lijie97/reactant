@@ -1,6 +1,6 @@
 import { StructuredTool } from "@langchain/core/tools";
 
-export type NodeType = 'agent' | 'tool' | 'instruction';
+export type NodeType = 'agent' | 'tool' | 'instruction' | 'complement';
 
 export interface BaseNode {
     type: NodeType;
@@ -17,9 +17,14 @@ export interface InstructionNodeProps extends BaseNode {
     id?: string;
 }
 
+export interface ComplementNodeProps extends BaseNode {
+    type: 'complement';
+    content: string;
+    id?: string;
+}
+
 export interface AgentNodeProps extends BaseNode {
     type: 'agent';
 }
 
-export type ReActantNode = ToolNodeProps | InstructionNodeProps | AgentNodeProps;
-
+export type ReActantNode = ToolNodeProps | InstructionNodeProps | ComplementNodeProps | AgentNodeProps;

@@ -1,4 +1,4 @@
-import Reconciler from 'react-reconciler';
+import React from 'react';
 import { AgentContainer } from './container';
 import { ReActantNode, ToolNodeProps, InstructionNodeProps } from './types';
 import { StructuredTool } from '@langchain/core/tools';
@@ -31,27 +31,13 @@ type ChildSet = any;
 type TimeoutHandle = any;
 type NoTimeout = any;
 
-const ReActantRenderer = Reconciler<
-    Type,
-    Props,
-    Container,
-    Instance,
-    TextInstance,
-    SuspenseInstance,
-    HydratableInstance,
-    PublicInstance,
-    HostContext,
-    UpdatePayload,
-    ChildSet,
-    TimeoutHandle,
-    NoTimeout
->({
+const ReActantRenderer = require('react-reconciler')({
     supportsMutation: true,
     supportsPersistence: false,
     supportsHydration: false,
     isPrimaryRenderer: true,
 
-    createInstance(type, props, rootContainerInstance, hostContext, internalInstanceHandle) {
+    createInstance(type: Type, props: Props, rootContainerInstance: Container, hostContext: HostContext, internalInstanceHandle: any): Instance {
         return {
             type,
             props,
@@ -60,145 +46,168 @@ const ReActantRenderer = Reconciler<
         };
     },
 
-    createTextInstance(text, rootContainerInstance, hostContext, internalInstanceHandle) {
+    createTextInstance(text: string, rootContainerInstance: Container, hostContext: HostContext, internalInstanceHandle: any): TextInstance {
         return text;
     },
 
 
-    appendInitialChild(parentInstance, child) {
-        // We generally have a flat structure where children are added to the container,
-        // but if we nest components, we might need this.
-        // For V1, the meaningful actions happen at appendChildToContainer.
+    appendInitialChild(parentInstance: Instance, child: Instance | TextInstance) {
     },
 
-    finalizeInitialChildren(instance, type, props, rootContainerInstance, hostContext) {
+    finalizeInitialChildren(instance: Instance, type: Type, props: Props, rootContainerInstance: Container, hostContext: HostContext) {
         return false;
     },
 
-    prepareUpdate(instance, type, oldProps, newProps, rootContainerInstance, hostContext) {
+    prepareUpdate(instance: Instance, type: Type, oldProps: Props, newProps: Props, rootContainerInstance: Container, hostContext: HostContext) {
         return newProps; // Simple payload
     },
 
-    shouldSetTextContent(type, props) {
+    shouldSetTextContent(type: Type, props: Props) {
         return false;
     },
 
-    getRootHostContext(rootContainerInstance) {
+    getRootHostContext(rootContainerInstance: Container) {
         return {};
     },
 
-    getChildHostContext(parentHostContext, type, rootContainerInstance) {
+    getChildHostContext(parentHostContext: HostContext, type: Type, rootContainerInstance: Container) {
         return {};
     },
 
-    getPublicInstance(instance) {
-        return instance;
+    getPublicInstance(instance: Instance) {
+        return instance as Instance;
     },
 
-    prepareForCommit(containerInfo) {
+    prepareForCommit(containerInfo: Container) {
         return null;
     },
 
-    resetAfterCommit(containerInfo) {
+    resetAfterCommit(containerInfo: Container) {
     },
 
-    preparePortalMount(containerInfo) {
+    preparePortalMount(containerInfo: Container) {
     },
 
-    scheduleTimeout(fn, delay) {
+    scheduleTimeout(fn: any, delay: any) {
         return setTimeout(fn, delay);
     },
 
-    cancelTimeout(id) {
+    cancelTimeout(id: any) {
         clearTimeout(id);
     },
 
     noTimeout: -1,
 
     // Mutation methods
-    appendChildToContainer(container, child) {
-        if (typeof child === 'string') return; // Ignore raw text nodes at root
-        
+    appendChildToContainer(container: Container, child: Instance | TextInstance) {
+        if (typeof child === 'string') return;
         const instance = child as Instance;
-        if (instance.type === 'tool') {
-            const tool = instance.props.tool as StructuredTool;
-            if (tool) {
-                container.registerTool(tool);
+        try {
+            if (instance.type === 'tool') {
+                const tool = instance.props.tool as StructuredTool;
+                if (tool) container.registerTool(tool);
+            } else if (instance.type === 'instruction') {
+                const content = instance.props.content || instance.props.children;
+                container.registerInstruction(instance.id, resolveText(content));
+            } else if (instance.type === 'complement') {
+                const content = instance.props.content || instance.props.children;
+                container.registerComplement(instance.id, resolveText(content));
             }
-        } else if (instance.type === 'instruction') {
-            const content = instance.props.content || instance.props.children;
-            const textContent = resolveText(content);
-            container.registerInstruction(instance.id, textContent);
-        }
+        } catch (e) { console.error("ReActant Renderer Error in appendChildToContainer:", e); }
+    },
+    
+    insertInContainerBefore(container: Container, child: Instance | TextInstance, beforeChild: Instance | TextInstance) {
+         // Since we use Maps in container, order is preserved by insertion.
+         // But React tries to use this for reordering.
+         // We can just call appendChildToContainer because Maps handle unique keys.
+         // Or if we need strict ordering for Instructions, we might need a better container impl.
+         // For now, treat as append.
+         if (typeof child === 'string') return;
+         
+         const instance = child as Instance;
+         try {
+             if (instance.type === 'tool') {
+                 const tool = instance.props.tool as StructuredTool;
+                 if (tool) container.registerTool(tool);
+             } else if (instance.type === 'instruction') {
+                 const content = instance.props.content || instance.props.children;
+                 container.registerInstruction(instance.id, resolveText(content));
+             } else if (instance.type === 'complement') {
+                 const content = instance.props.content || instance.props.children;
+                 container.registerComplement(instance.id, resolveText(content));
+             }
+         } catch (e) { console.error("ReActant Renderer Error in insertInContainerBefore:", e); }
     },
 
-    removeChildFromContainer(container, child) {
+    removeChildFromContainer(container: Container, child: Instance | TextInstance) {
         if (typeof child === 'string') return;
 
         const instance = child as Instance;
-        if (instance.type === 'tool') {
-            const tool = instance.props.tool as StructuredTool;
-            if (tool) {
-                container.unregisterTool(tool.name);
+        try {
+            if (instance.type === 'tool') {
+                const tool = instance.props.tool as StructuredTool;
+                if (tool) {
+                    container.unregisterTool(tool.name);
+                }
+            } else if (instance.type === 'instruction') {
+                container.unregisterInstruction(instance.id);
+            } else if (instance.type === 'complement') {
+                container.unregisterComplement(instance.id);
             }
-        } else if (instance.type === 'instruction') {
-            container.unregisterInstruction(instance.id);
+        } catch (e) {
+             console.error("ReActant Renderer Error in removeChildFromContainer:", e);
         }
     },
 
-    commitUpdate(instance, updatePayload, type, oldProps, newProps, internalInstanceHandle) {
+    commitUpdate(instance: Instance, updatePayload: any, type: Type, oldProps: Props, newProps: Props, internalInstanceHandle: any) {
         instance.props = newProps;
-        if (instance.type === 'instruction') {
-             const content = newProps.content || newProps.children;
-             const textContent = resolveText(content);
-             instance.container.registerInstruction(instance.id, textContent);
-        } else if (instance.type === 'tool') {
-            // If tool definition changed, re-register
-            const tool = newProps.tool as StructuredTool;
-            if (tool && tool.name !== (oldProps.tool as StructuredTool)?.name) {
-                 instance.container.unregisterTool((oldProps.tool as StructuredTool).name);
-                 instance.container.registerTool(tool);
+        try {
+            if (instance.type === 'instruction') {
+                const content = newProps.content || newProps.children;
+                const textContent = resolveText(content);
+                instance.container.registerInstruction(instance.id, textContent);
+            } else if (instance.type === 'complement') {
+                const content = newProps.content || newProps.children;
+                const textContent = resolveText(content);
+                instance.container.registerComplement(instance.id, textContent);
+            } else if (instance.type === 'tool') {
+                // If tool definition changed, re-register
+                const tool = newProps.tool as StructuredTool;
+                if (tool && tool.name !== (oldProps.tool as StructuredTool)?.name) {
+                    instance.container.unregisterTool((oldProps.tool as StructuredTool).name);
+                    instance.container.registerTool(tool);
+                }
             }
+        } catch (e) {
+             console.error("ReActant Renderer Error in commitUpdate:", e);
         }
     },
     
-    // We also need to handle appendChild/removeChild for nested components if we wrap things in <div> equivalent.
-    // But since our <Agent> is likely the root or a fragment, let's assume direct children of container for now.
-    // If we have <Agent><Wrapper><Tool/></Wrapper></Agent>, Wrapper needs to pass Tool up?
-    // This is where "Host Components" vs "Composite Components" matters.
-    // Wrapper is a Composite Component (function), it renders to Host Components.
-    // Ultimately `appendChildToContainer` is called for top level Host Components.
-    
-    appendChild(parentInstance, child) {
-        // If we have nested host components (e.g. Group -> Tool), we need to handle this.
-        // For now, assume flat list of host components.
+    appendChild(parentInstance: Instance, child: Instance | TextInstance) {
     },
     
-    removeChild(parentInstance, child) {
+    removeChild(parentInstance: Instance, child: Instance | TextInstance) {
     },
     
-    commitTextUpdate(textInstance, oldText, newText) {
+    commitTextUpdate(textInstance: TextInstance, oldText: string, newText: string) {
     },
     
-    clearContainer(container) {
-        // Clear all tools/instructions?
-        // container.clear(); // If we had such method
+    clearContainer(container: Container) {
     },
 
     getCurrentEventPriority() {
         return 16; // DefaultEventPriority
     },
     
-    getInstanceFromNode(node) {
+    getInstanceFromNode(node: any) {
         return node;
     },
     
     beforeActiveInstanceBlur() {},
     afterActiveInstanceBlur() {},
     prepareScopeUpdate() {},
-    getInstanceFromScope() {},
-    detachDeletedInstance(node) {},
+    getInstanceFromScope() { return null; },
+    detachDeletedInstance(node: any) {},
 });
 
 export default ReActantRenderer;
-

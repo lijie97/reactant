@@ -1,18 +1,74 @@
 import React from 'react';
 import { StructuredTool } from '@langchain/core/tools';
+import { ComplementObject, ComplementInstance, ToolObject, ToolInstance } from './objects';
 
-export const Agent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return React.createElement(React.Fragment, {}, children);
+// DI Interface: Allow 'when' predicate
+export interface ConditionalProps<T> {
+    when?: (context: T) => boolean;
+}
+
+export const Agent: React.FC<{ 
+    children?: React.ReactNode, 
+    complements?: ComplementObject[],
+    tools?: ToolObject[]
+}> = ({ children, complements, tools }) => {
+    return React.createElement(React.Fragment, {}, 
+        // Render registered object instances
+        complements?.map(c => React.createElement(ComplementInstance, { key: c.id, instance: c })),
+        tools?.map(t => React.createElement(ToolInstance, { key: t.tool.name, instance: t })),
+        children
+    );
 };
 
-export const Tool: React.FC<{ tool: StructuredTool }> = ({ tool }) => {
+export const Tool: React.FC<{ tool: StructuredTool } & ConditionalProps<any>> = ({ tool, when }) => {
+    // If 'when' is present, we need a way to check it. 
+    // However, React components render immediately.
+    // The "DI" pattern in React usually implies Context.
+    // We can use a ContextProvider to pass the state down.
+    return React.createElement(ToolConsumer, { tool, when });
+};
+
+export const Instruction: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps<any>> = ({ children, id, when }) => {
+    return React.createElement(InstructionConsumer, { content: children, id, when });
+};
+
+export const Complement: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps<any>> = ({ children, id, when }) => {
+    return React.createElement(ComplementConsumer, { content: children, id, when });
+};
+
+// Alias
+export const SystemMessage = Instruction;
+
+
+// --- Internal Consumers ---
+// These consume the "AgentState" context to evaluate 'when'
+
+export const AgentStateContext = React.createContext<any>(null);
+
+export const AgentStateProvider: React.FC<{ value: any, children: React.ReactNode }> = ({ value, children }) => {
+    return React.createElement(AgentStateContext.Provider, { value }, children);
+};
+
+const ToolConsumer: React.FC<{ tool: StructuredTool, when?: (ctx: any) => boolean }> = ({ tool, when }) => {
+    const context = React.useContext(AgentStateContext);
+    const shouldRender = when ? when(context) : true;
+    
+    if (!shouldRender) return null;
     return React.createElement('tool', { tool });
 };
 
-export const Instruction: React.FC<{ children: string, id?: string }> = ({ children, id }) => {
-    return React.createElement('instruction', { content: children, id });
+const InstructionConsumer: React.FC<{ content: React.ReactNode, id?: string, when?: (ctx: any) => boolean }> = ({ content, id, when }) => {
+    const context = React.useContext(AgentStateContext);
+    const shouldRender = when ? when(context) : true;
+    
+    if (!shouldRender) return null;
+    return React.createElement('instruction', { content, id });
 };
 
-// Alias for Instruction
-export const SystemMessage = Instruction;
-
+const ComplementConsumer: React.FC<{ content: React.ReactNode, id?: string, when?: (ctx: any) => boolean }> = ({ content, id, when }) => {
+    const context = React.useContext(AgentStateContext);
+    const shouldRender = when ? when(context) : true;
+    
+    if (!shouldRender) return null;
+    return React.createElement('complement', { content, id });
+};

@@ -34,16 +34,18 @@ export function createReActantGraph(container: AgentContainer, model: ChatOpenAI
     // 2. Define the Tool Node
     const toolNode = async (state: AgentState) => {
         const lastMessage = state.messages[state.messages.length - 1];
-        if (!("tool_calls" in lastMessage) || !lastMessage.tool_calls?.length) {
+        const lastToolCalls = (lastMessage as any).tool_calls;
+        
+        if (!lastToolCalls || !lastToolCalls.length) {
             return { messages: [] };
         }
-
+        
         const tools = container.getTools();
         const toolMap = new Map(tools.map(t => [t.name, t]));
         
         const results: BaseMessage[] = [];
         
-        for (const call of lastMessage.tool_calls) {
+        for (const call of lastToolCalls) {
             const tool = toolMap.get(call.name);
             if (tool) {
                 console.log(`[ReActant] Executing tool: ${call.name}`);

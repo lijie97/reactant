@@ -5,6 +5,9 @@ import { ReactNode } from 'react';
 export * from './components';
 export * from './container';
 export * from './types';
+export * from './objects';
+// Export Context Provider for usage in Runtime or User Code
+export { AgentStateProvider } from './components';
 
 export function createRoot(container: AgentContainer) {
     const root = ReActantRenderer.createContainer(

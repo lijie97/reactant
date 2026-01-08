@@ -3,11 +3,7 @@ import { StructuredTool } from "@langchain/core/tools";
 export class AgentContainer {
     private tools: Map<string, StructuredTool> = new Map();
     private instructions: Map<string, string> = new Map();
-    
-    // We use a simple counter to generate stable IDs if not provided, 
-    // though React's reconciliation usually handles identity.
-    // For instructions, order matters, so we might need a list or a Map with ordered keys.
-    // JS Maps preserve insertion order.
+    private complements: Map<string, string> = new Map();
     
     constructor() {}
 
@@ -27,21 +23,35 @@ export class AgentContainer {
         this.instructions.delete(id);
     }
 
+    registerComplement(id: string, content: string) {
+        this.complements.set(id, content);
+    }
+
+    unregisterComplement(id: string) {
+        this.complements.delete(id);
+    }
+
     // Runtime Accessors
     getTools(): StructuredTool[] {
         return Array.from(this.tools.values());
     }
 
     getSystemPrompt(): string {
-        return Array.from(this.instructions.values()).join('\n\n');
+        const base = Array.from(this.instructions.values()).join('\n\n');
+        const comps = Array.from(this.complements.values()).join('\n\n');
+        
+        if (base && comps) {
+            return `${base}\n\n=== ADDITIONAL CONTEXT ===\n${comps}`;
+        }
+        return base || comps;
     }
     
     // Debug helper
     snapshot() {
         return {
             tools: this.getTools().map(t => t.name),
-            instructions: Array.from(this.instructions.entries())
+            instructions: Array.from(this.instructions.entries()),
+            complements: Array.from(this.complements.entries())
         }
     }
 }
-
