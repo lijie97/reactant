@@ -37,12 +37,16 @@ export class ReActantApp {
     private graph: ReturnType<typeof createReActantGraph>;
     private llm: ChatOpenAI;
     private currentState: any = {};
+    private currentElement: ReactNode | null = null;
 
     constructor(config: ReActantAppConfig) {
         this.container = new AgentContainer();
         this.root = createRoot(this.container);
         this.llm = config.llm;
-        this.graph = createReActantGraph(this.container, this.llm);
+        // Inject the refresh mechanism into the graph
+        this.graph = createReActantGraph(this.container, this.llm, async () => {
+            await this.refresh();
+        });
     }
     
     private wrapWithProvider(element: ReactNode, state: any) {
@@ -52,6 +56,7 @@ export class ReActantApp {
     }
 
     async mount(element: ReactNode, initialState: any = {}) {
+        this.currentElement = element;
         this.currentState = initialState;
         return this.root.render(this.wrapWithProvider(element, initialState));
     }
@@ -66,10 +71,21 @@ export class ReActantApp {
     }
     
     async update(element: ReactNode, newState?: any) {
+        this.currentElement = element;
         if (newState) {
             this.currentState = newState;
         }
         return this.root.render(this.wrapWithProvider(element, this.currentState));
+    }
+
+    // Internal method to re-render with current state/element
+    // This is called by the Graph when tools might have side-effected the state
+    private async refresh() {
+        if (this.currentElement) {
+            // Note: If currentState is an object reference that was mutated by a tool,
+            // passing it again works because React component functions will re-run and see new values.
+            return this.root.render(this.wrapWithProvider(this.currentElement, this.currentState));
+        }
     }
 
     unmount() {

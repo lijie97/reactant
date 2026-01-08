@@ -1,6 +1,7 @@
 import React from 'react';
 import { StructuredTool } from '@langchain/core/tools';
 import { ComplementObject, ComplementInstance, ToolObject, ToolInstance } from './objects';
+export { Complement } from './complement_component';
 
 // DI Interface: Allow 'when' predicate
 export interface ConditionalProps<T> {
@@ -13,12 +14,13 @@ export const Agent: React.FC<{
     tools?: ToolObject[]
 }> = ({ children, complements, tools }) => {
     return React.createElement(React.Fragment, {}, 
-        // Render registered object instances
+        // Render registered object instances (Legacy Array Prop)
         complements?.map(c => React.createElement(ComplementInstance, { key: c.id, instance: c })),
         tools?.map(t => React.createElement(ToolInstance, { key: t.tool.name, instance: t })),
         children
     );
 };
+
 
 export const Tool: React.FC<{ tool: StructuredTool } & ConditionalProps<any>> = ({ tool, when }) => {
     // If 'when' is present, we need a way to check it. 
@@ -32,9 +34,10 @@ export const Instruction: React.FC<{ children: React.ReactNode, id?: string } & 
     return React.createElement(InstructionConsumer, { content: children, id, when });
 };
 
-export const Complement: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps<any>> = ({ children, id, when }) => {
-    return React.createElement(ComplementConsumer, { content: children, id, when });
-};
+// Removed old Complement export to avoid conflict with the new one imported from ./complement_component
+// export const Complement: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps<any>> = ({ children, id, when }) => {
+//    return React.createElement(ComplementConsumer, { content: children, id, when });
+// };
 
 // Alias
 export const SystemMessage = Instruction;

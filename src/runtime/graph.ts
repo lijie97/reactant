@@ -9,7 +9,11 @@ export interface AgentState {
     messages: BaseMessage[];
 }
 
-export function createReActantGraph(container: AgentContainer, model: ChatOpenAI) {
+export function createReActantGraph(
+    container: AgentContainer, 
+    model: ChatOpenAI,
+    onStateChange?: () => Promise<void>
+) {
     // 1. Define the Agent Node
     const callModel = async (state: AgentState, config?: RunnableConfig) => {
         const { messages } = state;
@@ -44,6 +48,7 @@ export function createReActantGraph(container: AgentContainer, model: ChatOpenAI
         const toolMap = new Map(tools.map(t => [t.name, t]));
         
         const results: BaseMessage[] = [];
+        let stateChanged = false;
         
         for (const call of lastToolCalls) {
             const tool = toolMap.get(call.name);
@@ -64,6 +69,7 @@ export function createReActantGraph(container: AgentContainer, model: ChatOpenAI
                         content: content,
                         name: call.name
                     }));
+                    stateChanged = true;
                 } catch (e: any) {
                     results.push(new ToolMessage({
                         tool_call_id: call.id!,
@@ -78,6 +84,13 @@ export function createReActantGraph(container: AgentContainer, model: ChatOpenAI
                     name: call.name
                 }));
             }
+        }
+
+        // Trigger State Update / Re-render if tools were executed
+        // This ensures the next Agent Node sees the updated context (if any)
+        if (stateChanged && onStateChange) {
+            console.log("[ReActant] Tool executed, refreshing context...");
+            await onStateChange();
         }
         
         return { messages: results };
