@@ -1,5 +1,5 @@
 import { AgentContainer } from "../core/container";
-import { BaseMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import { BaseMessage, SystemMessage, ToolMessage, AIMessage } from "@langchain/core/messages";
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
 import { RunnableConfig } from "@langchain/core/runnables";
@@ -38,9 +38,15 @@ export function createReActantGraph(
     // 2. Define the Tool Node
     const toolNode = async (state: AgentState) => {
         const lastMessage = state.messages[state.messages.length - 1];
-        const lastToolCalls = (lastMessage as any).tool_calls;
         
-        if (!lastToolCalls || !lastToolCalls.length) {
+        let toolCalls: any[] = [];
+        if (lastMessage instanceof AIMessage && lastMessage.tool_calls) {
+            toolCalls = lastMessage.tool_calls;
+        } else if ((lastMessage as any).tool_calls) {
+             toolCalls = (lastMessage as any).tool_calls;
+        }
+        
+        if (!toolCalls || !toolCalls.length) {
             return { messages: [] };
         }
         
@@ -50,7 +56,7 @@ export function createReActantGraph(
         const results: BaseMessage[] = [];
         let stateChanged = false;
         
-        for (const call of lastToolCalls) {
+        for (const call of toolCalls) {
             const tool = toolMap.get(call.name);
             if (tool) {
                 console.log(`[ReActant] Executing tool: ${call.name}`);

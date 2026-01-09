@@ -4,7 +4,7 @@ import { ComplementObject, ComplementInstance, ToolObject, ToolInstance } from '
 export { Complement } from './complement_component';
 
 // DI Interface: Allow 'when' predicate
-export interface ConditionalProps<T> {
+export interface ConditionalProps<T = unknown> {
     when?: (context: T) => boolean;
 }
 
@@ -22,7 +22,7 @@ export const Agent: React.FC<{
 };
 
 
-export const Tool: React.FC<{ tool: StructuredTool } & ConditionalProps<any>> = ({ tool, when }) => {
+export const Tool: React.FC<{ tool: StructuredTool } & ConditionalProps> = ({ tool, when }) => {
     // If 'when' is present, we need a way to check it. 
     // However, React components render immediately.
     // The "DI" pattern in React usually implies Context.
@@ -30,7 +30,7 @@ export const Tool: React.FC<{ tool: StructuredTool } & ConditionalProps<any>> = 
     return React.createElement(ToolConsumer, { tool, when });
 };
 
-export const Instruction: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps<any>> = ({ children, id, when }) => {
+export const Instruction: React.FC<{ children: React.ReactNode, id?: string } & ConditionalProps> = ({ children, id, when }) => {
     return React.createElement(InstructionConsumer, { content: children, id, when });
 };
 
@@ -46,9 +46,9 @@ export const SystemMessage = Instruction;
 // --- Internal Consumers ---
 // These consume the "AgentState" context to evaluate 'when'
 
-export const AgentStateContext = React.createContext<any>(null);
+export const AgentStateContext = React.createContext<unknown>(null);
 
-export const AgentStateProvider: React.FC<{ value: any, children: React.ReactNode }> = ({ value, children }) => {
+export const AgentStateProvider: React.FC<{ value: unknown, children: React.ReactNode }> = ({ value, children }) => {
     return React.createElement(AgentStateContext.Provider, { value }, children);
 };
 

@@ -3,7 +3,7 @@ import {
     Agent, 
     Instruction, 
     ComplementObject, 
-    createApp, 
+    Reactant, // New Class
     ChatOpenAI, 
     z, 
     tool, 
@@ -28,12 +28,10 @@ let globalState: UserContext = {
 };
 
 // --- 2. Tools ---
-// These tools update the global state. 
-// The framework's automatic refresh mechanism will trigger a re-render after execution.
-
 const setDepartmentTool = tool(
     async ({ department }) => {
-        globalState.department = department as any;
+        // department is automatically inferred as 'IT' | 'Finance' | 'HR' by Zod
+        globalState.department = department; 
         return `Department set to ${department}.`;
     },
     { name: "set_department", schema: z.object({ department: z.enum(['IT', 'Finance', 'HR']) }) }
@@ -41,7 +39,8 @@ const setDepartmentTool = tool(
 
 const setTypeTool = tool(
     async ({ type }) => {
-        globalState.type = type as any;
+        // type is automatically inferred as 'Onsite' | 'Remote' by Zod
+        globalState.type = type;
         return `Work type set to ${type}.`;
     },
     { name: "set_work_type", schema: z.object({ type: z.enum(['Onsite', 'Remote']) }) }
@@ -140,7 +139,8 @@ const OnboardingAgent = () => {
 
 // --- 5. Runtime Execution ---
 async function main() {
-    const app = createApp({
+    // Instantiate the Reactant Framework
+    const agent = new Reactant({
         llm: new ChatOpenAI({ 
             modelName: "gpt-4o", 
             temperature: 0, 
@@ -148,14 +148,14 @@ async function main() {
         })
     });
 
-    console.log("--- ReActant Demo: Context Engineering ---");
+    console.log("--- ReActant Demo: Context Engineering (New API) ---");
     
     // Mount the Agent with initial state
-    await app.mount(<OnboardingAgent />, globalState);
+    await agent.render(<OnboardingAgent />, globalState);
 
     const chat = async (input: string, history: BaseMessage[]) => {
         console.log(`\nUser: ${input}`);
-        const result = await app.input(input, history);
+        const result = await agent.chat(input, history);
         console.log(`Agent: ${result.content}`);
         return [...history, new HumanMessage(input), new AIMessage(result.content)];
     };

@@ -27,63 +27,76 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     }
 }
 
-export interface ReActantAppConfig {
+export interface ReactantConfig {
     llm: ChatOpenAI;
 }
 
-export class ReActantApp {
+/**
+ * Reactant - The main entry class for the Framework.
+ * Encapsulates the React Runtime (View) and the LangGraph Engine (Model/Controller).
+ */
+export class Reactant<State = any> {
     private container: AgentContainer;
     private root: ReturnType<typeof createRoot>;
     private graph: ReturnType<typeof createReActantGraph>;
     private llm: ChatOpenAI;
-    private currentState: any = {};
+    private currentState: State = {} as State;
     private currentElement: ReactNode | null = null;
 
-    constructor(config: ReActantAppConfig) {
+    constructor(config: ReactantConfig) {
         this.container = new AgentContainer();
         this.root = createRoot(this.container);
         this.llm = config.llm;
+        
         // Inject the refresh mechanism into the graph
         this.graph = createReActantGraph(this.container, this.llm, async () => {
             await this.refresh();
         });
     }
     
-    private wrapWithProvider(element: ReactNode, state: any) {
+    private wrapWithProvider(element: ReactNode, state: State) {
         return React.createElement(ErrorBoundary, {}, 
              React.createElement(AgentStateProvider, { value: state, children: element })
         );
     }
 
-    async mount(element: ReactNode, initialState: any = {}) {
+    /**
+     * Renders the Agent definition (React Component Tree).
+     * Can be used for initial mount or subsequent updates.
+     * @param element The React Element (<Agent ... />)
+     * @param state Optional initial state or updated state
+     */
+    async render(element: ReactNode, state?: State) {
         this.currentElement = element;
-        this.currentState = initialState;
-        return this.root.render(this.wrapWithProvider(element, initialState));
+        if (state !== undefined) {
+            this.currentState = state;
+        }
+        return this.root.render(this.wrapWithProvider(element, this.currentState));
     }
 
-    async input(message: string, history: BaseMessage[] = []) {
+    /**
+     * Sends a message to the Agent.
+     * @param message User input string
+     * @param history Conversational history (optional)
+     */
+    async chat(message: string, history: BaseMessage[] = []) {
+        // Ensure we have rendered something
+        if (!this.currentElement) {
+            console.warn("[Reactant] Warning: chat() called before render(). Please call agent.render(<App />) first.");
+        }
+
         const res = await this.graph.invoke({ messages: [...history, new HumanMessage(message)] });
         const messages = res.messages as BaseMessage[];
+        
         return {
             content: messages[messages.length - 1].content,
             messages: messages
         };
     }
-    
-    async update(element: ReactNode, newState?: any) {
-        this.currentElement = element;
-        if (newState) {
-            this.currentState = newState;
-        }
-        return this.root.render(this.wrapWithProvider(element, this.currentState));
-    }
 
     // Internal method to re-render with current state/element
-    // This is called by the Graph when tools might have side-effected the state
     private async refresh() {
         if (this.currentElement) {
-            // Note: If currentState is an object reference that was mutated by a tool,
-            // passing it again works because React component functions will re-run and see new values.
             return this.root.render(this.wrapWithProvider(this.currentElement, this.currentState));
         }
     }
@@ -93,6 +106,7 @@ export class ReActantApp {
     }
 }
 
-export function createApp(config: ReActantAppConfig) {
-    return new ReActantApp(config);
+// Legacy factory for backward compatibility if needed, but we prefer Class usage now.
+export function createApp<State = any>(config: ReactantConfig) {
+    return new Reactant<State>(config);
 }

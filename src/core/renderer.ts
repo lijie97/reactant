@@ -13,7 +13,7 @@ function resolveText(children: any): string {
 }
 
 type Type = ReActantNode['type'];
-type Props = any;
+type Props = Record<string, unknown>;
 type Container = AgentContainer;
 type Instance = {
     type: Type;
@@ -41,7 +41,7 @@ const ReActantRenderer = require('react-reconciler')({
         return {
             type,
             props,
-            id: props.id || Math.random().toString(36).substring(7),
+            id: (props.id as string) || Math.random().toString(36).substring(7),
             container: rootContainerInstance
         };
     },
