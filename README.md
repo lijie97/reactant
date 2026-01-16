@@ -46,7 +46,7 @@ When your app state changes, ReActant automatically "re-renders" the Agent's bra
 ## Installation
 
 ```bash
-npm install reactant-framework
+npm install agent-reactant
 # or
 npm install react react-reconciler @langchain/langgraph @langchain/core @langchain/openai zod
 ```
@@ -59,7 +59,7 @@ npm install react react-reconciler @langchain/langgraph @langchain/core @langcha
 
 ```tsx
 import React from 'react';
-import { Agent, Instruction, Tool, Reactant } from 'reactant-framework';
+import { Agent, Instruction, Tool, Reactant } from 'agent-reactant';
 import { z, tool } from '@langchain/core/tools';
 
 // Define a Tool

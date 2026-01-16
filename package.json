@@ -1,29 +1,48 @@
 {
-  "name": "reactant",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "agent-reactant",
+  "version": "0.1.0",
+  "description": "The React for AI Agents. Context Engineering Framework powered by React and LangGraph.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "ai",
+    "agent",
+    "react",
+    "langgraph",
+    "langchain",
+    "framework",
+    "context-engineering"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
   "dependencies": {
-    "@langchain/core": "^1.1.11",
-    "@langchain/langgraph": "^1.0.7",
-    "@langchain/openai": "^1.2.1",
-    "dotenv": "^17.2.3",
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/openai": "^0.3.0",
+    "dotenv": "^16.4.7",
     "react": "^18.3.1",
     "react-reconciler": "^0.29.0",
-    "zod": "^4.3.5"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
+    "@types/node": "^22.10.5",
     "@types/react": "^18.3.1",
-    "@types/react-reconciler": "^0.28.0",
+    "@types/react-reconciler": "^0.28.8",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
   }
 }
