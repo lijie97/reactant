@@ -55,7 +55,23 @@ const ReActantRenderer = require('react-reconciler')({
     },
 
     finalizeInitialChildren(instance: Instance, type: Type, props: Props, rootContainerInstance: Container, hostContext: HostContext) {
+        // For MCP nodes, trigger async connection
+        if (type === 'mcp' && (instance as any).mcpServerConfig) {
+            const server = (instance as any).mcpServerConfig;
+            // Return true to trigger commitMount
+            return true;
+        }
         return false;
+    },
+    
+    commitMount(instance: Instance, type: Type, props: Props, internalInstanceHandle: any) {
+        // Async MCP connection after mount
+        if (type === 'mcp' && (instance as any).mcpServerConfig) {
+            const server = (instance as any).mcpServerConfig;
+            instance.container.registerMCPServer(instance.id, server).catch((e: any) => {
+                console.error(`[ReActant] MCP connection error:`, e);
+            });
+        }
     },
 
     prepareUpdate(instance: Instance, type: Type, oldProps: Props, newProps: Props, rootContainerInstance: Container, hostContext: HostContext) {
@@ -112,6 +128,13 @@ const ReActantRenderer = require('react-reconciler')({
             } else if (instance.type === 'complement') {
                 const content = instance.props.content || instance.props.children;
                 container.registerComplement(instance.id, resolveText(content));
+            } else if (instance.type === 'mcp') {
+                const server = instance.props.server as any;
+                // Note: MCP connection is async, handled in finalizeInitialChildren
+                if (server) {
+                    // Store config first, actual connection happens in commit phase
+                    (instance as any).mcpServerConfig = server;
+                }
             }
         } catch (e) { console.error("ReActant Renderer Error in appendChildToContainer:", e); }
     },
@@ -135,6 +158,14 @@ const ReActantRenderer = require('react-reconciler')({
              } else if (instance.type === 'complement') {
                  const content = instance.props.content || instance.props.children;
                  container.registerComplement(instance.id, resolveText(content));
+             } else if (instance.type === 'mcp') {
+                 const server = instance.props.server as any;
+                 if (server) {
+                     (instance as any).mcpServerConfig = server;
+                     container.registerMCPServer(instance.id, server).catch((e: any) => {
+                         console.error(`[ReActant] MCP connection error:`, e);
+                     });
+                 }
              }
          } catch (e) { console.error("ReActant Renderer Error in insertInContainerBefore:", e); }
     },
@@ -153,6 +184,10 @@ const ReActantRenderer = require('react-reconciler')({
                 container.unregisterInstruction(instance.id);
             } else if (instance.type === 'complement') {
                 container.unregisterComplement(instance.id);
+            } else if (instance.type === 'mcp') {
+                container.unregisterMCPServer(instance.id).catch((e: any) => {
+                    console.error(`[ReActant] MCP disconnection error:`, e);
+                });
             }
         } catch (e) {
              console.error("ReActant Renderer Error in removeChildFromContainer:", e);
@@ -176,6 +211,14 @@ const ReActantRenderer = require('react-reconciler')({
                 if (tool && tool.name !== (oldProps.tool as StructuredTool)?.name) {
                     instance.container.unregisterTool((oldProps.tool as StructuredTool).name);
                     instance.container.registerTool(tool);
+                }
+            } else if (instance.type === 'mcp') {
+                const server = newProps.server as any;
+                if (server) {
+                    // Reconnect to MCP server
+                    instance.container.unregisterMCPServer(instance.id)
+                        .then(() => instance.container.registerMCPServer(instance.id, server))
+                        .catch((e: any) => console.error(`[ReActant] MCP update error:`, e));
                 }
             }
         } catch (e) {

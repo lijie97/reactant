@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { AgentContainer } from '../core/container';
 import { createRoot, AgentStateProvider } from '../core';
 import { createReActantGraph } from './graph';
+import { MCPClientAdapter } from './mcp-client';
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, BaseMessage } from "@langchain/core/messages";
 
@@ -45,6 +46,11 @@ export class Reactant<State = any> {
 
     constructor(config: ReactantConfig) {
         this.container = new AgentContainer();
+        
+        // Initialize MCP client for connecting to external MCP servers
+        const mcpClient = new MCPClientAdapter();
+        this.container.setMCPClient(mcpClient);
+        
         this.root = createRoot(this.container);
         this.llm = config.llm;
         

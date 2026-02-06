@@ -26,10 +26,23 @@ Instead of managing complex imperative logic to decide *when* an agent should ha
 <Agent>
   <Instruction>You are a helpful assistant.</Instruction>
   
-  {/* Logic is declarative and reactive */}
+  {/* Conditional Tools */}
   {user.isAdmin && <Tool tool={adminPanel} />}
   
+  {/* Dynamic Context */}
   <Complement instance={contextualDocs} />
+  
+  {/* MCP Server - Only when needed */}
+  <MCPServer 
+    server={financeMCPServer}
+    when={(ctx) => ctx.needsFinancialTools}
+  />
+  
+  {/* Skill - Progressive Disclosure */}
+  <Skill 
+    skill={mathSkill}
+    when={(ctx) => ctx.taskType === 'math'}
+  />
 </Agent>
 ```
 
@@ -42,6 +55,8 @@ When your app state changes, ReActant automatically "re-renders" the Agent's bra
 - 🧠 **Dynamic LangGraph**: Built on top of LangGraph, but the graph structure is managed dynamically by the React Tree.
 - 💉 **Dependency Injection**: Inject state into your Agent and use conditional rendering (`when` props) for clean separation of concerns.
 - 🛡️ **Type Safe**: First-class TypeScript support with Zod schema inference for Tools.
+- 🔌 **MCP Client**: Connect to external Model Context Protocol servers and use their tools (stdio transport supported).
+- 🎯 **LangGraph Compatible**: 100% compatible with LangGraph tools - no custom abstractions.
 
 ## Installation
 
@@ -112,11 +127,48 @@ ReActant implements a custom React Renderer. Instead of rendering to HTML DOM, i
 - `<Instruction>` -> System Prompt
 - `<Tool>` -> Bound Function
 - `<Complement>` -> Dynamic Context Injection
+- `<MCPServer>` -> Model Context Protocol Server Connection
+- `<Skill>` -> Reusable Capability Package
 
 ### 2. Automatic Context Sync
 When an Agent executes a Tool that modifies your application state, ReActant detects this and triggers a "re-render". The Agent immediately sees the updated context (e.g., new tools available, updated prompts) within the **same conversation turn**.
 
-### 3. Patterns
+### 3. MCP Integration - Connect to External Servers
+
+**MCP (Model Context Protocol)** allows you to connect to external tool servers:
+```tsx
+// Connect to external filesystem MCP server
+<MCPServer 
+  server={{ 
+    name: "filesystem",
+    transport: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "./safe-dir"]
+  }}
+  when={(ctx) => ctx.userRole === 'admin'}
+/>
+```
+
+**What happens:**
+1. ReActant connects to the external MCP server as a **client**
+2. Fetches available tools from that server via MCP protocol
+3. Converts them to LangChain `StructuredTool`
+4. Makes them available to your agent
+
+**LangGraph Compatible:**
+- No custom "skill" abstraction - just use standard LangChain tools
+- All tools are `StructuredTool` instances
+- 100% compatible with LangGraph's tool system
+
+**Benefits:**
+- 🔌 **Plug & Play**: Use any MCP-compliant server from the community
+- 🔐 **Gated Access**: Control tool availability with `when` conditions
+- 🎯 **On-Demand**: Tools only available when conditions are met
+- ⚡ **Standard**: Full LangGraph/LangChain compatibility
+
+See [examples/demo/README.md](examples/demo/README.md) for MCP integration examples.
+
+### 4. Patterns
 
 #### JSX Composition
 Pass logic objects as props to keep your JSX clean.
